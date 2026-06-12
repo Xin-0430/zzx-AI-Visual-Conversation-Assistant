@@ -558,12 +558,19 @@
     visualMemory.forEach((entry, i) => {
       const cell = document.createElement("div");
       cell.className = "memory-cell";
-      cell.innerHTML = '<img src="' + entry.dataUrl + '" alt="mem"><div class="mc-overlay">\u{1F50D}</div>';
+      cell.innerHTML = '<img src="' + entry.dataUrl + '" alt="mem"><div class="mc-overlay"><span class="mc-view">\u{1F50D}</span><span class="mc-dl">\u2B07</span></div>';
       cell.addEventListener("click", () => {
         addUserMessage("\u{1F4F8} \u56DE\u987E\u8FD9\u5F20\u753B\u9762", entry);
         speech.speak("\u6B63\u5728\u67E5\u770B\u4E4B\u524D\u4FDD\u5B58\u7684\u753B\u9762", { rate: 0.9 });
         const q = entry.query || "\u63CF\u8FF0\u8FD9\u5F20\u56FE\u7247";
         setTimeout(() => captureAndSend(q), 300);
+      cell.querySelector('.mc-dl').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const a = document.createElement('a');
+        a.href = entry.dataUrl;
+        a.download = 'vca-memory-' + entry.time + '.jpg';
+        a.click();
+      });
       });
       memoryStrip.appendChild(cell);
     });
@@ -669,3 +676,4 @@
 =======
 
 >>>>>>> Stashed changes
+
