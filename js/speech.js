@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Speech Module v2 — with voice command detection
  * Handles speech recognition (Web Speech API) and text-to-speech.
  * Detects built-in voice commands: save, repeat, switch mode, capture.
