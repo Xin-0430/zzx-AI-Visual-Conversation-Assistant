@@ -169,15 +169,11 @@
     speech.on("command", (cmd, raw) => {
       handleVoiceCommand(cmd, raw);
     });
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendMessage(); }
     if (e.key === 'Escape') {
-<<<<<<< Updated upstream
       var m = document.getElementById('settingsModal');
       if (m.style.display === 'flex') document.getElementById('settingsClose').click();
     }
@@ -185,7 +181,6 @@
       var chips = document.querySelectorAll('.mode-chip');
       var idx = ['1','2','3','4','5'].indexOf(e.key);
       if (idx < chips.length) chips[idx].click();
-=======
       if (document.getElementById('settingsModal').style.display === 'flex') {
         document.getElementById('settingsClose').click();
       }
@@ -205,7 +200,6 @@
       var modes = Object.keys(SCENE_MODES);
       var idx = ['1','2','3','4','5'].indexOf(e.key);
       if (idx < modes.length) document.querySelectorAll('.mode-chip')[idx].click();
->>>>>>> Stashed changes
     }
   });
   }
@@ -672,8 +666,6 @@
   else init();
 })();
 
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
+
 
