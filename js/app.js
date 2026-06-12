@@ -169,6 +169,20 @@
     speech.on("command", (cmd, raw) => {
       handleVoiceCommand(cmd, raw);
     });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+    if (e.key === 'Escape') {
+      var m = document.getElementById('settingsModal');
+      if (m.style.display === 'flex') document.getElementById('settingsClose').click();
+    }
+    if (['1','2','3','4','5'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+      var chips = document.querySelectorAll('.mode-chip');
+      var idx = ['1','2','3','4','5'].indexOf(e.key);
+      if (idx < chips.length) chips[idx].click();
+    }
+  });
   }
 
   function setupBtnGroup(groupId, configKey, defaultVal) {
@@ -625,3 +639,4 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
