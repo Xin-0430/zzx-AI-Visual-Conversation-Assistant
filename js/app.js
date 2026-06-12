@@ -6,7 +6,7 @@
   let currentMode = "general";
   let isProcessing = false;
   let isCameraActive = false;
-  let isMicActive = false;
+  let isMicActive = false, _useRecording = false;
   let ambientTimer = null;
   let lastFrameData = null;
   const visualMemory = [];
@@ -166,6 +166,7 @@
       toggleMicBtn.classList.remove("recording");
       toggleMicBtn.innerHTML = '<span class="tool-icon">\u25CB</span><span class="tool-label">\u9EA6\u514B\u98CE</span>';
       isMicActive = false;
+      if (err === "network") { showToast("语音识别不可用，再点一次切换录音", "error"); _useRecording = true; } else { showToast("语音识别错误", "error"); }
     });
     speech.on("command", (cmd, raw) => {
       handleVoiceCommand(cmd, raw);
@@ -341,19 +342,48 @@
   // ---- Microphone ----
   function toggleMic() {
     if (isMicActive) {
-      speech.stopListening();
+      if (_useRecording && speech.stopRecording) {
+        speech.stopRecording();
+        isMicActive = false;
+      } else {
+        speech.stopListening();
+        voiceIndicator.style.display = "none";
+      }
       toggleMicBtn.classList.remove("recording");
       toggleMicBtn.innerHTML = '<span class="tool-icon">\u25CB</span><span class="tool-label">\u9EA6\u514B\u98CE</span>';
-      voiceIndicator.style.display = "none";
       isMicActive = false;
     } else {
-      const m = SCENE_MODES[currentMode];
-      if (speech.startListening({ lang: m.speechLang || "zh-CN", continuous: true })) {
+      if (_useRecording) {
+        speech.startRecording(function(blob) {
+          showToast("\u8BED\u97F3\u8F6C\u6587\u5B57中...");
+          if (ai && ai.transcribeAudio) {
+            ai.transcribeAudio(blob).then(function(text) {
+              if (text) {
+                chatInput.value = text;
+                if (autoSendEnabled) sendMessage();
+              } else {
+                showToast("\u8BED\u97F3\u8F6C\u6587\u5B57失\u8D25\uFF0C\u5F53\u524DAI\u4E0D\u652F\u6301\u8BED\u97F3\u8F6C\u5199，\u8BF7\u7528\u6587\u5B57\u8F93\u5165", "error");
+              }
+              _useRecording = false;
+            }).catch(function() {
+              showToast("\u8BED\u97F3\u8BC6\u522B\u5931\u8D25\uFF0C\u8BF7\u7528\u6587\u5B57\u8F93\u5165", "error");
+              _useRecording = false;
+            });
+          }
+        });
         isMicActive = true;
         toggleMicBtn.classList.add("recording");
         toggleMicBtn.innerHTML = '<span class="tool-icon">\u25CB</span><span class="tool-label">\u505C\u6B62</span>';
+        showToast("\u5F55\u97F3中...\u8BF4\u5B8C\u540E\u70B9\u51FB\u505C\u6B62", "");
       } else {
-        showToast("\u60A8\u7684\u6D4F\u89C8\u5668\u4E0D\u652F\u6301\u8BED\u97F3\u8BC6\u522B\uFF0C\u8BF7\u4F7F\u7528 Chrome \u6216 Edge\u3002", "error");
+        var m = SCENE_MODES[currentMode];
+        if (speech.startListening({ lang: m.speechLang || "zh-CN", continuous: true })) {
+          isMicActive = true;
+          toggleMicBtn.classList.add("recording");
+          toggleMicBtn.innerHTML = '<span class="tool-icon">\u25CB</span><span class="tool-label">\u505C\u6B62</span>';
+        } else {
+          showToast("\u60A8\u7684\u6D4F\u89C8\u5668\u4E0D\u652F\u6301\u8BED\u97F3\u8BC6\u522B\uFF0C\u8BF7\u4F7F\u7528 Chrome \u6216 Edge\u3002", "error");
+        }
       }
     }
   }

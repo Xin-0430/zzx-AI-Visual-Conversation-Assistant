@@ -52,7 +52,7 @@ class AIProvider {
     this.name = 'base';
   }
 
-  async analyze({ image, text, systemPrompt }) {
+  async analyze({ image, text, systemPrompt, sceneIQ }) {
     throw new Error('Subclasses must implement analyze()');
   }
 
@@ -73,7 +73,7 @@ class MockProvider extends AIProvider {
     this.callCount = 0;
   }
 
-  async analyze({ image, text, systemPrompt }) {
+  async analyze({ image, text, systemPrompt, sceneIQ }) {
     this.callCount++;
     // Simulate delay
     await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
@@ -82,7 +82,21 @@ class MockProvider extends AIProvider {
     const hasImage = !!image;
 
     let response;
-    if (!hasImage) {
+    if (sceneIQ && hasImage) {
+      var b = sceneIQ.brightness || 128;
+      var sn = sceneIQ.scene || '';
+      var cl = sceneIQ.color;
+      var ct = cl ? 'RGB('+cl.r+','+cl.g+','+cl.b+')' : '';
+      var lt = b > 180 ? '明亮' : b > 80 ? '正常' : '偏暗';
+      var md = '';
+      if (systemPrompt.indexOf('视障') >= 0) md = 'v';
+      else if (systemPrompt.indexOf('儿童') >= 0) md = 'c';
+      else if (systemPrompt.indexOf('老人') >= 0) md = 'e';
+      if (md==='v') response = '[环境分析] 光线:'+b+'/255 '+lt+' | 场景:'+sn+(b<40?' [注意]光线过暗':'');
+      else if (md==='c') response = '[画面分析] 颜色:'+ct+' | 光线:'+lt+' | '+sn;
+      else if (md==='e') response = '[画面分析] 光线:'+b+'/255 '+(b<80?'偏暗':'正常')+' | 场景:'+sn;
+      else response = '[离线分析] 光线:'+b+'/255('+lt+') | 场景:'+sn+' | 颜色:'+ct+' | '+(sceneIQ.motion>20?'有运动':'静止');
+    } else if (!hasImage) {
       response = `📷 我没有接收到摄像头画面。请先打开摄像头，然后我才能帮你分析看到的内容。`;
     } else if (systemPrompt && systemPrompt.includes('视障')) {
       response = this._mockVisualAid(msg);
@@ -143,7 +157,7 @@ class OpenAIProvider extends AIProvider {
     };
   }
 
-  async analyze({ image, text, systemPrompt }) {
+  async analyze({ image, text, systemPrompt, sceneIQ }) {
     const messages = [
       { role: 'system', content: systemPrompt || 'You are a helpful AI assistant that analyzes visual content from camera input. Respond in Chinese.' },
     ];
@@ -248,7 +262,7 @@ class GeminiProvider extends AIProvider {
     // Gemini pricing (approximate, per character)
   }
 
-  async analyze({ image, text, systemPrompt }) {
+  async analyze({ image, text, systemPrompt, sceneIQ }) {
     const contents = [];
     const parts = [];
 
@@ -332,6 +346,7 @@ class AIService {
       apiKey: '',
       openAIModel: 'gpt-4o-mini',
       deepseekModel: 'deepseek-chat',
+      qwenModel: 'qwen-vl-plus',
       geminiModel: 'gemini-2.0-flash',
       frameInterval: 3,
       imageQuality: 0.5,
@@ -357,6 +372,14 @@ class AIService {
         this.provider = new OpenAIProvider({
           apiKey: this.config.apiKey,
           model: this.config.openAIModel,
+        });
+        break;
+      case 'qwen':
+        this.provider = new OpenAIProvider({
+          apiKey: this.config.apiKey,
+          model: this.config.qwenModel,
+          baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+          name: 'Qwen',
         });
         break;
       case 'deepseek':
