@@ -398,7 +398,7 @@ class AIService {
    * @param {number} [options.quality] - Override JPEG quality
    * @returns {Promise<{text: string, cost: Object}>}
    */
-  async analyze({ image, text, systemPrompt, maxWidth, quality } = {}) {
+  async analyze({ image, text, systemPrompt, sceneIQ, maxWidth, quality } = {}) {
     const provider = this.getProvider();
     const opts = {
       maxWidth: maxWidth || this.config.maxImageWidth,
@@ -409,6 +409,7 @@ class AIService {
       image: image ? { ...image, dataUrl: this._compressIfNeeded(image, opts) } : null,
       text: text || '',
       systemPrompt: systemPrompt || this.config.systemPrompt,
+      sceneIQ: sceneIQ,
     });
 
     this.costTracker.addRecord(result.cost);
