@@ -1,497 +1,225 @@
-/**
- * App Controller
- * Main orchestrator — wires up Camera, Speech, AI Service, and Scene Modes.
- * Handles UI state, message flow, and event coordination.
- */
-(function () {
-  'use strict';
-
-  // ---- State ----
+﻿"use strict";
+(function(){
+  const $ = id => document.getElementById(id);
   let camera, speech, ai;
-  let currentMode = 'general';
+  let currentMode = "general";
   let isProcessing = false;
   let isCameraActive = false;
   let isMicActive = false;
-  let conversationHistory = [];
-  let lastFrameData = null;
 
-  // ---- DOM refs ----
-  const $ = (id) => document.getElementById(id);
-  const video = $('cameraFeed');
-  const canvas = $('cameraCanvas');
-  const chatMessages = $('chatMessages');
-  const chatInput = $('chatInput');
-  const sendBtn = $('sendBtn');
-  const toggleCameraBtn = $('toggleCamera');
-  const toggleMicBtn = $('toggleMic');
-  const captureBtn = $('captureFrame');
-  const clearChatBtn = $('clearChat');
-  const voiceIndicator = $('voiceIndicator');
-  const statusDot = $('statusDot');
-  const statusText = $('statusText');
-  const modeDescription = $('modeDescription');
-  const settingsBtn = $('settingsBtn');
-  const settingsModal = $('settingsModal');
-  const settingsClose = $('settingsClose');
-  const saveSettingsBtn = $('saveSettings');
-  const ttsToggle = $('ttsToggle');
-  const autoSendToggle = $('autoSendToggle');
-  const frameBadge = $('frameBadge');
-  const lastFrameSize = $('lastFrameSize');
+  // DOM refs
+  const video = $("cameraFeed"), canvas = $("cameraCanvas");
+  const camPlaceholder = $("camPlaceholder");
+  const toggleCameraBtn = $("toggleCamera"), captureBtn = $("captureBtn");
+  const toggleMicBtn = $("toggleMic"), frameBadge = $("frameBadge"), frameSizeText = $("frameSizeText");
+  const chatMessages = $("chatMessages"), chatInput = $("chatInput"), sendBtn = $("sendBtn");
+  const clearChatBtn = $("clearChat"), voiceIndicator = $("voiceIndicator"), voiceInterim = $("voiceInterim");
+  const sDot = $("sDot"), sText = $("sText"), sCost = $("sCost");
+  const insightTitle = $("insightTitle"), insightDesc = $("insightDesc"), insightIcon = $("insightIcon");
+  const settingsToggle = $("settingsToggle"), settingsModal = $("settingsModal"), settingsClose = $("settingsClose");
+  const apiProvider = $("apiProvider"), apiKey = $("apiKey"), apiKeyGroup = $("apiKeyGroup"), systemPrompt = $("systemPrompt");
+  const autoSendChip = $("autoSendChip"), ttsChip = $("ttsChip");
 
-  // ---- Init ----
+  let autoSend = true, ttsEnabled = true;
+
   function init() {
     camera = new CameraManager(video, canvas);
     speech = new SpeechManager();
     ai = new AIService();
-
-    setupEventListeners();
-    applySettings();
-    updateConnectionStatus('ready', '就绪');
+    bindEvents();
+    updateModeUI("general");
+    updateStatus("ready", "\u{1F916} \u5C31\u7EEA");
   }
 
-  // ---- Event Listeners ----
-  function setupEventListeners() {
-    // Mode buttons
-    document.querySelectorAll('.mode-btn').forEach((btn) => {
-      btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+  function bindEvents() {
+    document.querySelectorAll(".mode-chip").forEach(btn => {
+      btn.addEventListener("click", () => switchMode(btn.dataset.mode));
     });
-
-    // Camera controls
-    toggleCameraBtn.addEventListener('click', toggleCamera);
-    captureBtn.addEventListener('click', captureAndSend);
-    toggleMicBtn.addEventListener('click', toggleMicrophone);
-
-    // Chat controls
-    sendBtn.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+    toggleCameraBtn.addEventListener("click", toggleCamera);
+    captureBtn.addEventListener("click", sendWithCapture);
+    toggleMicBtn.addEventListener("click", toggleMic);
+    sendBtn.addEventListener("click", sendMessage);
+    chatInput.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
-    chatInput.addEventListener('input', autoResizeInput);
+    chatInput.addEventListener("input", () => autoResize(chatInput));
+    clearChatBtn.addEventListener("click", () => { chatMessages.innerHTML = ""; addSystemMessage("\u5BF9\u8BDD\u5DF2\u6E05\u7A7A"); });
+    settingsToggle.addEventListener("click", openSettings);
+    settingsClose.addEventListener("click", closeSettings);
+    settingsModal.addEventListener("click", e => { if (e.target === settingsModal) closeSettings(); });
+    apiProvider.addEventListener("change", () => { apiKeyGroup.style.display = apiProvider.value === "mock" ? "none" : "block"; });
+    autoSendChip.addEventListener("click", () => { autoSend = !autoSend; autoSendChip.classList.toggle("active"); });
+    ttsChip.addEventListener("click", () => { ttsEnabled = !ttsEnabled; ttsChip.classList.toggle("active"); });
 
-    // Clear chat
-    clearChatBtn.addEventListener('click', clearChat);
-
-    // Settings
-    settingsBtn.addEventListener('click', () => openSettings());
-    settingsClose.addEventListener('click', () => closeSettings());
-    saveSettingsBtn.addEventListener('click', saveSettings);
-    $('apiProvider').addEventListener('change', (e) => {
-      $('apiKeyGroup').style.display = e.target.value === 'mock' ? 'none' : 'block';
-    });
-
-    // Close modal on overlay click
-    settingsModal.addEventListener('click', (e) => {
-      if (e.target === settingsModal) closeSettings();
-    });
-
-    // Speech events
-    speech.on('result', (text) => {
-      voiceIndicator.style.display = 'none';
+    speech.on("result", text => {
+      voiceIndicator.style.display = "none";
       chatInput.value = text;
-      chatInput.dispatchEvent(new Event('input'));
-
-      // Auto-send if enabled
-      if (autoSendToggle.checked) {
-        sendMessage();
-      }
+      autoResize(chatInput);
+      if (autoSend) sendMessage();
     });
-
-    speech.on('interim', (text) => {
-      voiceIndicator.style.display = 'flex';
-    });
-
-    speech.on('end', () => {
-      voiceIndicator.style.display = 'none';
-      toggleMicBtn.classList.remove('recording');
-      isMicActive = false;
-    });
-
-    speech.on('error', (err) => {
-      voiceIndicator.style.display = 'none';
-      toggleMicBtn.classList.remove('recording');
-      isMicActive = false;
-      showToast(`语音识别错误: ${err}`);
-    });
+    speech.on("interim", text => { voiceIndicator.style.display = "flex"; voiceInterim.textContent = text; });
+    speech.on("end", () => { voiceIndicator.style.display = "none"; toggleMicBtn.classList.remove("recording"); isMicActive = false; });
   }
 
-  // ---- Mode Switching ----
   function switchMode(modeId) {
     currentMode = modeId;
-
-    // Update UI
-    document.querySelectorAll('.mode-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.mode === modeId);
-    });
-
-    const modeConfig = SCENE_MODES[modeId];
-    modeDescription.innerHTML = `<p>${modeConfig.description}</p>`;
-
-    // Update settings toggles
-    ttsToggle.checked = modeConfig.ttsEnabled;
-    autoSendToggle.checked = modeConfig.autoSend;
-
-    // Add system message about mode switch
-    addSystemMessage(`已切换到「${modeConfig.name}」`);
+    document.querySelectorAll(".mode-chip").forEach(b => b.classList.toggle("active", b.dataset.mode === modeId));
+    updateModeUI(modeId);
+    addSystemMessage("\u{1F3AF} \u5DF2\u5207\u6362\u5230\u300C" + SCENE_MODES[modeId].name + "\u300D");
   }
 
-  // ---- Camera ----
+  function updateModeUI(modeId) {
+    const m = SCENE_MODES[modeId];
+    insightTitle.textContent = m.name;
+    insightDesc.textContent = m.description;
+    insightIcon.textContent = m.icon || "\u25CB";
+  }
+
   async function toggleCamera() {
     if (isCameraActive) {
-      await camera.stop();
-      isCameraActive = false;
-      toggleCameraBtn.classList.remove('active');
-      toggleCameraBtn.innerHTML = '<span>\u{1F4F7}</span> 摄像头';
-      $('cameraPlaceholder').style.display = 'flex';
-      captureBtn.disabled = true;
-      toggleMicBtn.disabled = true;
-      chatInput.disabled = true;
-      sendBtn.disabled = true;
-      updateConnectionStatus('ready', '摄像头已关闭');
-      frameBadge.style.display = 'none';
+      await camera.stop(); isCameraActive = false;
+      toggleCameraBtn.classList.remove("active");
+      toggleCameraBtn.innerHTML = '<span class="tool-icon">\u25B3</span><span class="tool-label">\u6444\u50CF\u5934</span>';
+      camPlaceholder.style.display = "flex";
+      captureBtn.disabled = true; toggleMicBtn.disabled = true;
+      chatInput.disabled = true; sendBtn.disabled = true;
+      frameBadge.style.display = "none";
+      updateStatus("ready", "\u6444\u50CF\u5934\u5DF2\u5173\u95ED");
     } else {
       try {
-        updateConnectionStatus('connecting', '正在打开摄像头...');
-        const info = await camera.start();
+        updateStatus("connecting", "\u6253\u5F00\u6444\u50CF\u5934...");
+        await camera.start();
         isCameraActive = true;
-        toggleCameraBtn.classList.add('active');
-        toggleCameraBtn.innerHTML = '<span>\u{1F4F7}</span> 关闭';
-        $('cameraPlaceholder').style.display = 'none';
-        captureBtn.disabled = false;
-        toggleMicBtn.disabled = false;
-        chatInput.disabled = false;
-        sendBtn.disabled = false;
+        toggleCameraBtn.classList.add("active");
+        toggleCameraBtn.innerHTML = '<span class="tool-icon">\u25B3</span><span class="tool-label">\u5173\u95ED</span>';
+        camPlaceholder.style.display = "none";
+        captureBtn.disabled = false; toggleMicBtn.disabled = false;
+        chatInput.disabled = false; sendBtn.disabled = false;
         chatInput.focus();
-
-        const wasAutoSend = autoSendToggle.checked;
-        if (wasAutoSend) {
-          // Trigger an initial analysis
-          setTimeout(() => captureAndSend('你看到了什么？请介绍一下。'), 500);
-        }
-        updateConnectionStatus('online', '摄像头已开启');
+        setTimeout(() => sendQuery("\u4F60\u770B\u5230\u4E86\u4EC0\u4E48\uFF1F"), 800);
+        updateStatus("online", "\u6444\u50CF\u5934\u5DF2\u5F00\u542F");
       } catch (err) {
-        console.error('Camera error:', err);
-        showToast(`无法打开摄像头: ${err.message}`, 'error');
-        updateConnectionStatus('error', '摄像头错误');
+        showToast("\u65E0\u6CD5\u6253\u5F00\u6444\u50CF\u5934: " + err.message, "error");
+        updateStatus("error", "\u6444\u50CF\u5934\u9519\u8BEF");
       }
     }
   }
 
-  // ---- Microphone ----
-  function toggleMicrophone() {
+  function toggleMic() {
     if (isMicActive) {
-      speech.stopListening();
-      toggleMicBtn.classList.remove('recording');
-      voiceIndicator.style.display = 'none';
-      isMicActive = false;
-      toggleMicBtn.innerHTML = '<span>\u{1F3A4}</span> 麦克风';
+      speech.stopListening(); toggleMicBtn.classList.remove("recording"); voiceIndicator.style.display = "none"; isMicActive = false;
     } else {
-      const mode = SCENE_MODES[currentMode];
-      const started = speech.startListening({
-        lang: mode.speechLang || 'zh-CN',
-        continuous: false,
-      });
-      if (started) {
-        isMicActive = true;
-        toggleMicBtn.classList.add('recording');
-        toggleMicBtn.innerHTML = '<span>\u{1F3A4}</span> 停止';
+      if (speech.startListening({ lang: "zh-CN", continuous: false })) {
+        isMicActive = true; toggleMicBtn.classList.add("recording");
       } else {
-        showToast('您的浏览器不支持语音识别，请使用 Chrome 或 Edge。', 'error');
+        showToast("\u8BED\u97F3\u8BC6\u522B\u4E0D\u652F\u6301\uFF0C\u8BF7\u7528 Chrome", "error");
       }
     }
   }
 
-  // ---- Capture & Send ----
-  async function captureAndSend(overrideText) {
-    if (!isCameraActive) {
-      showToast('请先打开摄像头', 'error');
-      return;
-    }
-
-    const text = overrideText || chatInput.value.trim();
-    if (!text && !overrideText) {
-      showToast('请输入消息或说出你想问的内容', 'error');
-      return;
-    }
-
-    // Capture frame
-    const frame = camera.captureFrame(
-      ai.config.imageQuality,
-      ai.config.maxImageWidth
-    );
-
-    if (frame) {
-      lastFrameData = frame;
-      frameBadge.style.display = 'inline';
-      lastFrameSize.textContent = frame.sizeKB;
-    }
-
-    // Add user message
-    if (text) addUserMessage(text);
-    chatInput.value = '';
-    autoResizeInput();
-
-    // Show thinking
-    const thinkingEl = addThinkingIndicator();
-
-    // Process
-    await processQuery(text || '描述你看到的画面', frame, thinkingEl);
+  function sendWithCapture() {
+    if (!isCameraActive) { showToast("\u8BF7\u5148\u6253\u5F00\u6444\u50CF\u5934", "error"); return; }
+    const text = chatInput.value.trim();
+    if (!text) { showToast("\u8BF7\u8F93\u5165\u95EE\u9898", "error"); return; }
+    sendQuery(text, true);
   }
 
   async function sendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
-
-    if (!isCameraActive) {
-      // Text-only mode (no image)
-      addUserMessage(text);
-      chatInput.value = '';
-      const thinkingEl = addThinkingIndicator();
-      await processQuery(text, null, thinkingEl);
-      return;
-    }
-
-    await captureAndSend(text);
+    chatInput.value = ""; autoResize(chatInput);
+    sendQuery(text, isCameraActive);
   }
 
-  // ---- Process Query ----
-  async function processQuery(text, frame, thinkingEl) {
+  async function sendQuery(text, useCapture) {
+    const frame = useCapture ? camera.captureFrame(ai.config.imageQuality, ai.config.maxImageWidth) : null;
+    if (frame) { frameBadge.style.display = "inline"; frameSizeText.textContent = frame.sizeKB; }
+    addUserMessage(text);
+    const thinkEl = addThinking();
+    await processQuery(text, frame, thinkEl);
+  }
+
+  async function processQuery(text, frame, thinkEl) {
     if (isProcessing) return;
     isProcessing = true;
-
     try {
-      const modeConfig = SCENE_MODES[currentMode];
-      const useFrame = frame || (isCameraActive ? camera.captureFrame(
-        ai.config.imageQuality,
-        ai.config.maxImageWidth
-      ) : null);
-
+      const m = SCENE_MODES[currentMode];
       const result = await ai.analyze({
-        image: useFrame,
-        text: text,
-        systemPrompt: ai.config.systemPrompt || modeConfig.systemPrompt,
+        image: frame, text: text,
+        systemPrompt: ai.config.systemPrompt || m.systemPrompt
       });
-
-      // Remove thinking
-      if (thinkingEl && thinkingEl.parentNode) {
-        thinkingEl.parentNode.removeChild(thinkingEl);
-      }
-
-      // Add assistant response
+      if (thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
       addAssistantMessage(result.text, result.cost);
-
-      // Speak response
-      if (ttsToggle.checked && speech.isTTSupported()) {
-        const isElderly = currentMode === 'elderly';
-        speech.speak(result.text, {
-          rate: isElderly ? 0.85 : 1.0,
-          pitch: currentMode === 'children' ? 1.2 : 1.0,
-        });
+      if (ttsEnabled && speech.isTTSupported()) {
+        speech.speak(result.text, { rate: currentMode === "elderly" ? 0.85 : 1.0 });
       }
-
-      // Update cost display
-      updateConnectionStatus('online', getStatusText());
+      updateStatus("online", getStatusLabel());
     } catch (err) {
-      console.error('Query error:', err);
-      if (thinkingEl && thinkingEl.parentNode) {
-        thinkingEl.parentNode.removeChild(thinkingEl);
-      }
-      addErrorMessage(`抱歉，处理请求时出错: ${err.message}`);
-      updateConnectionStatus('error', '请求失败');
-    } finally {
-      isProcessing = false;
-    }
+      if (thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
+      addErrorMessage("\u62B1\u6B49: " + err.message);
+    } finally { isProcessing = false; }
   }
 
-  // ---- Chat UI ----
   function addUserMessage(text) {
-    const el = document.createElement('div');
-    el.className = 'message user';
-    el.innerHTML = `
-      <div class="msg-avatar">\u{1F464}</div>
-      <div class="msg-content"><p>${escapeHtml(text)}</p></div>`;
-    chatMessages.appendChild(el);
-    scrollToBottom();
+    const el = document.createElement("div"); el.className = "msg user";
+    el.innerHTML = '<div class="msg-avatar">\u{1F464}</div><div class="msg-body"><p>' + esc(text) + "</p></div>";
+    chatMessages.appendChild(el); scrollBottom();
   }
 
   function addAssistantMessage(text, cost) {
-    const costStr = cost ? formatCost(cost) : '';
-    const el = document.createElement('div');
-    el.className = 'message assistant';
-    el.innerHTML = `
-      <div class="msg-avatar">\u{1F916}</div>
-      <div class="msg-content">
-        <p>${formatResponse(text)}</p>
-        ${costStr ? `<div class="cost-info">${costStr}</div>` : ''}
-      </div>`;
-    chatMessages.appendChild(el);
-    scrollToBottom();
+    const costStr = cost ? fmtCost(cost) : "";
+    const el = document.createElement("div"); el.className = "msg assistant";
+    el.innerHTML = '<div class="msg-avatar">\u{1F916}</div><div class="msg-body"><p>' + fmtResp(text) + "</p>" + (costStr ? '<div class="msg-cost">' + costStr + "</div>" : "") + "</div>";
+    chatMessages.appendChild(el); scrollBottom();
   }
 
   function addSystemMessage(text) {
-    const el = document.createElement('div');
-    el.className = 'message system';
-    el.innerHTML = `
-      <div class="msg-avatar">\u{1F916}</div>
-      <div class="msg-content"><p>${escapeHtml(text)}</p></div>`;
-    chatMessages.appendChild(el);
-    scrollToBottom();
+    const el = document.createElement("div"); el.className = "msg system";
+    el.innerHTML = '<div class="msg-avatar">\u{1F916}</div><div class="msg-body"><p>' + esc(text) + "</p></div>";
+    chatMessages.appendChild(el); scrollBottom();
   }
 
   function addErrorMessage(text) {
-    const el = document.createElement('div');
-    el.className = 'message error';
-    el.innerHTML = `
-      <div class="msg-avatar">\u{26A0}</div>
-      <div class="msg-content"><p>${escapeHtml(text)}</p></div>`;
-    chatMessages.appendChild(el);
-    scrollToBottom();
+    const el = document.createElement("div"); el.className = "msg error";
+    el.innerHTML = '<div class="msg-avatar">\u26A0</div><div class="msg-body"><p>' + esc(text) + "</p></div>";
+    chatMessages.appendChild(el); scrollBottom();
   }
 
-  function addThinkingIndicator() {
-    const el = document.createElement('div');
-    el.className = 'message assistant';
-    el.innerHTML = `
-      <div class="msg-avatar">\u{1F916}</div>
-      <div class="msg-content">
-        <div class="thinking-indicator">
-          思考中
-          <div class="thinking-dots">
-            <span></span><span></span><span></span>
-          </div>
-        </div>
-      </div>`;
-    chatMessages.appendChild(el);
-    scrollToBottom();
-    return el;
+  function addThinking() {
+    const el = document.createElement("div"); el.className = "msg assistant";
+    el.innerHTML = '<div class="msg-avatar">\u{1F916}</div><div class="msg-body"><div class="thinking-indicator">\u601D\u8003\u4E2D<div class="thinking-dots"><span></span><span></span><span></span></div></div></div>';
+    chatMessages.appendChild(el); scrollBottom(); return el;
   }
 
-  function scrollToBottom() {
-    setTimeout(() => {
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }, 50);
-  }
+  function scrollBottom() { setTimeout(() => chatMessages.scrollTop = chatMessages.scrollHeight, 50); }
 
-  function clearChat() {
-    chatMessages.innerHTML = '';
-    addSystemMessage('对话已清空');
-    conversationHistory = [];
-  }
-
-  // ---- Settings ----
   function openSettings() {
     const cfg = ai.getConfig();
-    $('apiProvider').value = cfg.provider;
-    $('apiKey').value = cfg.apiKey || '';
-    $('apiKeyGroup').style.display = cfg.provider === 'mock' ? 'none' : 'block';
-    $('frameInterval').value = cfg.frameInterval;
-    $('imageQuality').value = cfg.imageQuality;
-    $('maxImageWidth').value = cfg.maxImageWidth;
-    $('systemPrompt').value = cfg.systemPrompt || '';
-
-    // Populate model selection based on provider
-    updateModelOptions(cfg.provider);
-    settingsModal.style.display = 'flex';
-  }
-
-  function updateModelOptions(provider) {
-    const select = $('apiProvider');
-    // Ensure the select shows the right value — models are embedded in the provider UX
+    apiProvider.value = cfg.provider;
+    apiKey.value = cfg.apiKey || "";
+    apiKeyGroup.style.display = cfg.provider === "mock" ? "none" : "block";
+    systemPrompt.value = cfg.systemPrompt || "";
+    settingsModal.style.display = "flex";
   }
 
   function closeSettings() {
-    settingsModal.style.display = 'none';
+    ai.saveConfig({
+      provider: apiProvider.value, apiKey: apiKey.value.trim(),
+      frameInterval: 3, imageQuality: 0.5, maxImageWidth: 640,
+      systemPrompt: systemPrompt.value.trim()
+    });
+    settingsModal.style.display = "none";
+    showToast("\u8BBE\u7F6E\u5DF2\u4FDD\u5B58");
   }
 
-  function saveSettings() {
-    const cfg = {
-      provider: $('apiProvider').value,
-      apiKey: $('apiKey').value.trim(),
-      frameInterval: parseInt($('frameInterval').value),
-      imageQuality: parseFloat($('imageQuality').value),
-      maxImageWidth: parseInt($('maxImageWidth').value),
-      systemPrompt: $('systemPrompt').value.trim(),
-    };
+  function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+  function fmtResp(t) { return t ? esc(t).replace(/\n/g, "<br>") : ""; }
+  function fmtCost(c) { if (!c) return ""; const t = (c.promptTokens||0)+(c.completionTokens||0); return (c.costUSD > 1e-6 ? "$\u2248"+c.costUSD.toFixed(6)+" | " : "") + t + " tokens"; }
+  function getStatusLabel() { const c = ai.getConfig(); const cs = ai.getCostSummary(); return (c.provider === "mock" ? "\u6A21\u62DF" : c.provider.toUpperCase()) + " | " + cs.requests + " \u6B21\u8BF7\u6C42"; }
+  function updateStatus(state, text) { sDot.className = "s-dot"; if (state === "online") sDot.classList.add("online"); if (state === "error") sDot.classList.add("error"); if (state === "connecting") sDot.classList.add("connecting"); sText.textContent = text; }
+  function showToast(msg, type) { const old = document.querySelector(".toast"); if (old) old.remove(); const t = document.createElement("div"); t.className = "toast" + (type === "error" ? " error" : ""); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3500); }
+  function autoResize(el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 80) + "px"; }
 
-    ai.saveConfig(cfg);
-    closeSettings();
-    showToast('设置已保存', 'success');
-    updateConnectionStatus('online', getStatusText());
-  }
-
-  // ---- Apply Settings ----
-  function applySettings() {
-    // The AI service already loads from localStorage
-    const cfg = ai.getConfig();
-    if (cfg.provider !== 'mock' && !cfg.apiKey) {
-      // Prompt user to configure
-      setTimeout(() => {
-        showToast('请配置 API Key 以启用 AI 视觉分析', 'error');
-      }, 2000);
-    }
-  }
-
-  // ---- Utility ----
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  function formatResponse(text) {
-    if (!text) return '';
-    // Simple line break handling
-    return escapeHtml(text).replace(/\n/g, '<br>');
-  }
-
-  function formatCost(cost) {
-    if (!cost) return '';
-    const total = cost.costUSD || 0;
-    const tokens = (cost.promptTokens || 0) + (cost.completionTokens || 0);
-    if (total === 0 && tokens === 0) return '';
-    if (total < 0.0001) {
-      return `Tokens: ${tokens} | 模拟模式`;
-    }
-    return `$${total.toFixed(6)} | Tokens: ${tokens}`;
-  }
-
-  function getStatusText() {
-    const cfg = ai.getConfig();
-    const cost = ai.getCostSummary();
-    const providerName = cfg.provider === 'mock' ? '模拟' : cfg.provider.toUpperCase();
-    return `${providerName} | ${isCameraActive ? '摄像头开' : '摄像头关'} | 请求: ${cost.requests}`;
-  }
-
-  function updateConnectionStatus(state, text) {
-    statusDot.className = 'status-dot';
-    if (state === 'online') statusDot.classList.add('online');
-    if (state === 'error') statusDot.classList.add('error');
-    if (state === 'connecting') statusDot.classList.add('connecting');
-    statusText.textContent = text;
-  }
-
-  function showToast(message, type = 'info') {
-    const existing = document.querySelector('.toast');
-    if (existing) existing.remove();
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
-  }
-
-  function autoResizeInput() {
-    chatInput.style.height = 'auto';
-    chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
-  }
-
-  // ---- Init ----
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();
