@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AI Service Module
  * Abstraction layer for visual AI services.
  * Supports: Mock (offline), OpenAI GPT-4o, Google Gemini.
@@ -78,17 +78,17 @@ class MockProvider extends AIProvider {
     // Simulate delay
     await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
 
-    const msg = text || '（未提供语音或文字）';
+    const msg = text || '锛堟湭鎻愪緵璇煶鎴栨枃瀛楋級';
     const hasImage = !!image;
 
     let response;
     if (!hasImage) {
-      response = `📷 我没有接收到摄像头画面。请先打开摄像头，然后我才能帮你分析看到的内容。`;
-    } else if (systemPrompt && systemPrompt.includes('视障')) {
+      response = `馃摲 鎴戞病鏈夋帴鏀跺埌鎽勫儚澶寸敾闈€傝鍏堟墦寮€鎽勫儚澶达紝鐒跺悗鎴戞墠鑳藉府浣犲垎鏋愮湅鍒扮殑鍐呭銆俙;
+    } else if (systemPrompt && systemPrompt.includes('瑙嗛殰')) {
       response = this._mockVisualAid(msg);
-    } else if (systemPrompt && systemPrompt.includes('儿童')) {
+    } else if (systemPrompt && systemPrompt.includes('鍎跨')) {
       response = this._mockChildEducation(msg);
-    } else if (systemPrompt && systemPrompt.includes('老人')) {
+    } else if (systemPrompt && systemPrompt.includes('鑰佷汉')) {
       response = this._mockElderly(msg);
     } else {
       response = this._mockGeneral(msg);
@@ -103,23 +103,23 @@ class MockProvider extends AIProvider {
 
   _mockGeneral(msg) {
     const responses = [
-      `👋 我看到了摄像头中的画面。关于"${msg}"，在离线模拟模式下，我模拟了视觉分析过程。要获得真实的 AI 视觉理解能力，请配置 API Key（OpenAI 或 Gemini）。`,
-      `📸 画面已捕获！关于"${msg}"的问题，离线模式提供模拟回答。在设置中配置 API 密钥即可启用真实的视觉分析。`,
-      `🔍 我观察到了画面内容。关于"${msg}"——这是一个模拟响应。要体验真正的视觉 AI 对话，请在高级设置中添加 API Key。`,
+      `馃憢 鎴戠湅鍒颁簡鎽勫儚澶翠腑鐨勭敾闈€傚叧浜?${msg}"锛屽湪绂荤嚎妯℃嫙妯″紡涓嬶紝鎴戞ā鎷熶簡瑙嗚鍒嗘瀽杩囩▼銆傝鑾峰緱鐪熷疄鐨?AI 瑙嗚鐞嗚В鑳藉姏锛岃閰嶇疆 API Key锛圤penAI 鎴?Gemini锛夈€俙,
+      `馃摳 鐢婚潰宸叉崟鑾凤紒鍏充簬"${msg}"鐨勯棶棰橈紝绂荤嚎妯″紡鎻愪緵妯℃嫙鍥炵瓟銆傚湪璁剧疆涓厤缃?API 瀵嗛挜鍗冲彲鍚敤鐪熷疄鐨勮瑙夊垎鏋愩€俙,
+      `馃攳 鎴戣瀵熷埌浜嗙敾闈㈠唴瀹广€傚叧浜?${msg}"鈥斺€旇繖鏄竴涓ā鎷熷搷搴斻€傝浣撻獙鐪熸鐨勮瑙?AI 瀵硅瘽锛岃鍦ㄩ珮绾ц缃腑娣诲姞 API Key銆俙,
     ];
     return responses[this.callCount % responses.length];
   }
 
   _mockVisualAid(msg) {
-    return `🔊 环境描述（模拟）：我正通过摄像头观察周围环境。关于"${msg}"，在完整模式下，我会检测障碍物、识别文字、描述场景。请配置 API Key 启用真实视觉分析。`;
+    return `馃攰 鐜鎻忚堪锛堟ā鎷燂級锛氭垜姝ｉ€氳繃鎽勫儚澶磋瀵熷懆鍥寸幆澧冦€傚叧浜?${msg}"锛屽湪瀹屾暣妯″紡涓嬶紝鎴戜細妫€娴嬮殰纰嶇墿銆佽瘑鍒枃瀛椼€佹弿杩板満鏅€傝閰嶇疆 API Key 鍚敤鐪熷疄瑙嗚鍒嗘瀽銆俙;
   }
 
   _mockChildEducation(msg) {
-    return `🎨 太棒了！我看到你在看东西！关于"${msg}"，在完整模式下，我可以帮你认识颜色、识别动物、学习字母。让爸爸妈妈配置 API Key 就能开始学习啦！`;
+    return `馃帹 澶浜嗭紒鎴戠湅鍒颁綘鍦ㄧ湅涓滆タ锛佸叧浜?${msg}"锛屽湪瀹屾暣妯″紡涓嬶紝鎴戝彲浠ュ府浣犺璇嗛鑹层€佽瘑鍒姩鐗┿€佸涔犲瓧姣嶃€傝鐖哥埜濡堝閰嶇疆 API Key 灏辫兘寮€濮嬪涔犲暒锛乣;
   }
 
   _mockElderly(msg) {
-    return `👴 好的，我来帮您看看。关于"${msg}"，在完整模式下，我可以帮您读取药品说明书、查看食品保质期。请在设置中配置 API Key 来启用这个功能。`;
+    return `馃懘 濂界殑锛屾垜鏉ュ府鎮ㄧ湅鐪嬨€傚叧浜?${msg}"锛屽湪瀹屾暣妯″紡涓嬶紝鎴戝彲浠ュ府鎮ㄨ鍙栬嵂鍝佽鏄庝功銆佹煡鐪嬮鍝佷繚璐ㄦ湡銆傝鍦ㄨ缃腑閰嶇疆 API Key 鏉ュ惎鐢ㄨ繖涓姛鑳姐€俙;
   }
 
   getCost() {
@@ -158,7 +158,7 @@ class OpenAIProvider extends AIProvider {
     if (text) {
       userContent.push({ type: 'text', text });
     } else if (image) {
-      userContent.push({ type: 'text', text: '请描述你看到的画面内容，尽可能详细。' });
+      userContent.push({ type: 'text', text: '璇锋弿杩颁綘鐪嬪埌鐨勭敾闈㈠唴瀹癸紝灏藉彲鑳借缁嗐€? });
     }
 
     messages.push({ role: 'user', content: userContent });
@@ -268,7 +268,7 @@ class GeminiProvider extends AIProvider {
     if (text) {
       userParts.push({ text });
     } else if (image) {
-      userParts.push({ text: '请详细描述你看到的画面内容。' });
+      userParts.push({ text: '璇疯缁嗘弿杩颁綘鐪嬪埌鐨勭敾闈㈠唴瀹广€? });
     }
 
     contents.push({ role: 'user', parts: userParts });
@@ -297,7 +297,7 @@ class GeminiProvider extends AIProvider {
       }
 
       const data = await res.json();
-      const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '（无响应）';
+      const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '锛堟棤鍝嶅簲锛?;
 
       return {
         text: textResponse,
@@ -334,6 +334,7 @@ class AIService {
       provider: 'mock',
       apiKey: '',
       openAIModel: 'gpt-4o-mini',
+      deepseekModel: 'deepseek-chat',
       geminiModel: 'gemini-2.0-flash',
       frameInterval: 3,
       imageQuality: 0.5,
@@ -354,6 +355,13 @@ class AIService {
         this.provider = new OpenAIProvider({
           apiKey: this.config.apiKey,
           model: this.config.openAIModel,
+        });
+        break;
+      case 'deepseek':
+        this.provider = new OpenAIProvider({
+          apiKey: this.config.apiKey,
+          model: this.config.deepseekModel,
+          baseUrl: 'https://api.deepseek.com/v1',
         });
         break;
       case 'gemini':
@@ -404,7 +412,7 @@ class AIService {
     if (image.width <= opts.maxWidth && image.quality >= opts.quality) {
       return image.dataUrl;
     }
-    // Recompress — this is handled by camera.captureFrame with desired params
+    // Recompress 鈥?this is handled by camera.captureFrame with desired params
     return image.dataUrl;
   }
 
@@ -434,3 +442,4 @@ window.MockProvider = MockProvider;
 window.OpenAIProvider = OpenAIProvider;
 window.GeminiProvider = GeminiProvider;
 window.AIService = AIService;
+
