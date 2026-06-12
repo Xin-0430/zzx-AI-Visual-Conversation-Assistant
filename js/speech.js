@@ -95,6 +95,32 @@ class SpeechManager {
     this.isListening = false;
   }
 
+  startRecording(onBlobReady) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+    this._mediaChunks = [];
+    this._onBlobReady = onBlobReady;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+      var r = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      r.ondataavailable = function(e) { if (e.data.size > 0) this._mediaChunks.push(e.data); }.bind(this);
+      r.onstop = function() {
+        var blob = new Blob(this._mediaChunks, { type: 'audio/webm' });
+        stream.getTracks().forEach(function(t) { t.stop(); });
+        if (this._onBlobReady) this._onBlobReady(blob);
+      }.bind(this);
+      r.start();
+      this._mediaRecorder = r;
+      this.isRecordingMedia = true;
+    }.bind(this)).catch(function() { });
+    return true;
+  }
+
+  stopRecording() {
+    if (this._mediaRecorder && this.isRecordingMedia) {
+      this._mediaRecorder.stop();
+      this.isRecordingMedia = false;
+    }
+  }
+
   _matchCommand(text) {
     const normalized = text.toLowerCase().replace(/[.,!?\s]/g, "");
     for (const [pattern, cmd] of Object.entries(this.commands)) {
