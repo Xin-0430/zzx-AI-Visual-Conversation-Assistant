@@ -3,13 +3,14 @@
   const $ = id => document.getElementById(id);
   let camera, speech, ai;
   let currentMode = "general";
-  let isProcessing = false;
-  let isCameraActive = false;
-  let isMicActive = false;
+  let isProcessing = false, isCameraActive = false, isMicActive = false;
+  let sceneIQInterval = null, fpsCounter = 0, fpsTimer = 0, prevBrightness = 128;
 
   // DOM refs
   const video = $("cameraFeed"), canvas = $("cameraCanvas");
   const camPlaceholder = $("camPlaceholder");
+  const sceneIQ = $("sceneIQ"), iqBrightnessFill = $("iqBrightnessFill");
+  const iqMotion = $("iqMotion"), iqScene = $("iqScene"), iqFps = $("iqFps"), iqRes = $("iqRes");
   const toggleCameraBtn = $("toggleCamera"), captureBtn = $("captureBtn");
   const toggleMicBtn = $("toggleMic"), frameBadge = $("frameBadge"), frameSizeText = $("frameSizeText");
   const chatMessages = $("chatMessages"), chatInput = $("chatInput"), sendBtn = $("sendBtn");
@@ -19,7 +20,6 @@
   const settingsToggle = $("settingsToggle"), settingsModal = $("settingsModal"), settingsClose = $("settingsClose");
   const apiProvider = $("apiProvider"), apiKey = $("apiKey"), apiKeyGroup = $("apiKeyGroup"), systemPrompt = $("systemPrompt");
   const autoSendChip = $("autoSendChip"), ttsChip = $("ttsChip");
-
   let autoSend = true, ttsEnabled = true;
 
   function init() {
@@ -50,11 +50,9 @@
     apiProvider.addEventListener("change", () => { apiKeyGroup.style.display = apiProvider.value === "mock" ? "none" : "block"; });
     autoSendChip.addEventListener("click", () => { autoSend = !autoSend; autoSendChip.classList.toggle("active"); });
     ttsChip.addEventListener("click", () => { ttsEnabled = !ttsEnabled; ttsChip.classList.toggle("active"); });
-
     speech.on("result", text => {
       voiceIndicator.style.display = "none";
-      chatInput.value = text;
-      autoResize(chatInput);
+      chatInput.value = text; autoResize(chatInput);
       if (autoSend) sendMessage();
     });
     speech.on("interim", text => { voiceIndicator.style.display = "flex"; voiceInterim.textContent = text; });
@@ -75,12 +73,32 @@
     insightIcon.textContent = m.icon || "\u25CB";
   }
 
+  // ---- Scene IQ ----
+  function startSceneIQ() {
+    if (sceneIQInterval) clearInterval(sceneIQInterval);
+    sceneIQInterval = setInterval(() => {
+      if (!isCameraActive) return;
+      const iq = camera.getSceneIQ();
+      if (!iq) return;
+      const bPct = Math.min(100, Math.round((iq.brightness / 255) * 100));
+      iqBrightnessFill.style.width = bPct + "%";
+      iqBrightnessFill.style.background = iq.brightness < 60 ? "#fbbf24" : iq.brightness < 120 ? "#00d4aa" : "#7c5cfc";
+      iqMotion.style.display = iq.motion > 8 ? "flex" : "none";
+      iqScene.innerHTML = iq.scene;
+      fpsCounter++;
+      if (Date.now() - fpsTimer > 1000) { iqFps.textContent = fpsCounter + " fps"; fpsCounter = 0; fpsTimer = Date.now(); }
+      prevBrightness = iq.brightness;
+    }, 300);
+  }
+
   async function toggleCamera() {
     if (isCameraActive) {
+      if (sceneIQInterval) { clearInterval(sceneIQInterval); sceneIQInterval = null; }
       await camera.stop(); isCameraActive = false;
       toggleCameraBtn.classList.remove("active");
       toggleCameraBtn.innerHTML = '<span class="tool-icon">\u25B3</span><span class="tool-label">\u6444\u50CF\u5934</span>';
       camPlaceholder.style.display = "flex";
+      sceneIQ.style.display = "none";
       captureBtn.disabled = true; toggleMicBtn.disabled = true;
       chatInput.disabled = true; sendBtn.disabled = true;
       frameBadge.style.display = "none";
@@ -88,14 +106,17 @@
     } else {
       try {
         updateStatus("connecting", "\u6253\u5F00\u6444\u50CF\u5934...");
-        await camera.start();
+        const info = await camera.start();
         isCameraActive = true;
         toggleCameraBtn.classList.add("active");
         toggleCameraBtn.innerHTML = '<span class="tool-icon">\u25B3</span><span class="tool-label">\u5173\u95ED</span>';
         camPlaceholder.style.display = "none";
+        sceneIQ.style.display = "flex";
+        iqRes.textContent = info.width + "x" + info.height;
         captureBtn.disabled = false; toggleMicBtn.disabled = false;
         chatInput.disabled = false; sendBtn.disabled = false;
         chatInput.focus();
+        startSceneIQ();
         setTimeout(() => sendQuery("\u4F60\u770B\u5230\u4E86\u4EC0\u4E48\uFF1F"), 800);
         updateStatus("online", "\u6444\u50CF\u5934\u5DF2\u5F00\u542F");
       } catch (err) {
@@ -111,9 +132,7 @@
     } else {
       if (speech.startListening({ lang: "zh-CN", continuous: false })) {
         isMicActive = true; toggleMicBtn.classList.add("recording");
-      } else {
-        showToast("\u8BED\u97F3\u8BC6\u522B\u4E0D\u652F\u6301\uFF0C\u8BF7\u7528 Chrome", "error");
-      }
+      } else { showToast("\u8BED\u97F3\u8BC6\u522B\u4E0D\u652F\u6301\uFF0C\u8BF7\u7528 Chrome", "error"); }
     }
   }
 
