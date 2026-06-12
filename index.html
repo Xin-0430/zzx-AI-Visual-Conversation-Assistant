@@ -1,203 +1,234 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AI 视觉对话助手</title>
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>AI VCA — 视觉对话助手</title>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<!-- ========== Sidebar ========== -->
-<aside id="sidebar" class="sidebar">
-  <div class="sidebar-header">
-    <h1 class="logo">AI VCA</h1>
-    <p class="logo-sub">视觉对话助手</p>
-  </div>
-
-  <!-- Mode Selection -->
-  <section class="sidebar-section" aria-label="场景模式">
-    <h2 class="section-label">场景模式</h2>
-    <div class="mode-list" id="modeList">
-      <button class="mode-btn active" data-mode="general">
-        <span class="mode-icon">&#x1F916;</span>
-        <span class="mode-name">通用模式</span>
-      </button>
-      <button class="mode-btn" data-mode="visually-impaired">
-        <span class="mode-icon">&#x1F9AF;</span>
-        <span class="mode-name">视障辅助</span>
-      </button>
-      <button class="mode-btn" data-mode="children">
-        <span class="mode-icon">&#x1F476;</span>
-        <span class="mode-name">儿童教育</span>
-      </button>
-      <button class="mode-btn" data-mode="elderly">
-        <span class="mode-icon">&#x1F474;</span>
-        <span class="mode-name">老人陪伴</span>
-      </button>
-      <button class="mode-btn" data-mode="lazy">
-        <span class="mode-icon">&#x1F634;</span>
-        <span class="mode-name">懒人模式</span>
-      </button>
-    </div>
-  </section>
-
-  <!-- Mode description -->
-  <div id="modeDescription" class="mode-description">
-    <p>通用 AI 视觉对话，问问摄像头看到的一切。</p>
-  </div>
-
-  <!-- Settings -->
-  <section class="sidebar-section" aria-label="设置">
-    <h2 class="section-label">设置</h2>
-    <div class="settings-group">
-      <div class="setting-row">
-        <span>语音回放</span>
-        <label class="toggle">
-          <input type="checkbox" id="ttsToggle" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="setting-row">
-        <span>自动发送</span>
-        <label class="toggle">
-          <input type="checkbox" id="autoSendToggle" checked>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <button class="setting-btn" id="settingsBtn">
-        <span>&#x2699;</span> 高级设置
-      </button>
-    </div>
-  </section>
-
-  <!-- Connection Status -->
-  <div class="sidebar-footer">
-    <div class="status-indicator" id="statusIndicator">
-      <span class="status-dot" id="statusDot"></span>
-      <span id="statusText">未连接</span>
-    </div>
-    <p class="version">v1.0 &middot; 3-Day Build</p>
-  </div>
-</aside>
-
-<!-- ========== Main Area ========== -->
-<main class="main-area">
-  <!-- Camera Feed -->
-  <section class="camera-panel" id="cameraPanel">
-    <div class="camera-view" id="cameraView">
-      <video id="cameraFeed" autoplay playsinline muted></video>
-      <canvas id="cameraCanvas" style="display:none;"></canvas>
-      <div class="camera-placeholder" id="cameraPlaceholder">
-        <span class="placeholder-icon">&#x1F4F7;</span>
-        <p>点击下方按钮打开摄像头</p>
-      </div>
-    </div>
-    <div class="camera-controls">
-      <button class="ctrl-btn" id="toggleCamera" aria-label="切换摄像头">
-        <span>&#x1F4F7;</span> 摄像头
-      </button>
-      <button class="ctrl-btn" id="captureFrame" aria-label="拍摄快照" disabled>
-        <span>&#x1F4F8;</span> 拍摄
-      </button>
-      <button class="ctrl-btn" id="toggleMic" aria-label="切换麦克风" disabled>
-        <span>&#x1F3A4;</span> 麦克风
-      </button>
-    </div>
-  </section>
-
-  <!-- Chat Area -->
-  <section class="chat-panel" aria-label="对话区">
-    <div class="chat-header">
-      <h2>对话</h2>
-      <div class="chat-header-actions">
-        <span class="frame-badge" id="frameBadge" style="display:none;">
-          <span id="lastFrameSize">0</span> KB
-        </span>
-        <button class="icon-btn" id="clearChat" aria-label="清空对话" title="清空对话">&#x1F5D1;</button>
+<div id="app">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><span class="icon-eye">&#x25C8;</span></div>
+      <div class="brand-text">
+        <h1 class="brand-name">VCA</h1>
+        <p class="brand-tagline">视觉对话助手</p>
       </div>
     </div>
 
-    <div class="chat-messages" id="chatMessages">
-      <div class="message system">
-        <div class="msg-avatar">&#x1F916;</div>
-        <div class="msg-content">
-          <p>你好！我是 AI 视觉对话助手。</p>
-          <p>打开摄像头，然后通过语音或文字告诉我你想了解什么。</p>
-          <p class="msg-hint">试试说"帮我看一下周围有什么"或点击麦克风按钮开始语音输入。</p>
+    <!-- Scene Modes -->
+    <nav class="mode-nav" id="modeNav">
+      <div class="nav-label">场景模式</div>
+      <button class="mode-chip active" data-mode="general">
+        <span class="mc-icon">&#x25CB;</span><span>通用模式</span>
+      </button>
+      <button class="mode-chip" data-mode="visually-impaired">
+        <span class="mc-icon">&#x25B3;</span><span>视障辅助</span>
+      </button>
+      <button class="mode-chip" data-mode="children">
+        <span class="mc-icon">&#x2661;</span><span>儿童教育</span>
+      </button>
+      <button class="mode-chip" data-mode="elderly">
+        <span class="mc-icon">&#x2666;</span><span>老人陪伴</span>
+      </button>
+      <button class="mode-chip" data-mode="lazy">
+        <span class="mc-icon">&#x2732;</span><span>懒人模式</span>
+      </button>
+    </nav>
+
+    <!-- Mode Insight -->
+    <div class="insight-card" id="insightCard">
+      <div class="insight-icon" id="insightIcon">&#x25CB;</div>
+      <div class="insight-body">
+        <div class="insight-title" id="insightTitle">通用模式</div>
+        <div class="insight-desc" id="insightDesc">问问摄像头看到的一切</div>
+      </div>
+    </div>
+
+    <!-- Smart Suggestions -->
+    <div class="suggestion-box" id="suggestionBox">
+      <div class="suggestion-label">快捷提问</div>
+      <div class="suggestion-chips" id="suggestionChips"></div>
+    </div>
+
+    <!-- Visual Memory -->
+    <div class="memory-section" id="memorySection">
+      <div class="memory-header">
+        <span class="memory-label">视觉记忆</span>
+        <span class="memory-count" id="memoryCount">0</span>
+      </div>
+      <div class="memory-strip" id="memoryStrip">
+        <div class="memory-empty">暂无记录</div>
+      </div>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-actions">
+      <button class="s-action" id="ambientToggle" title="环境感知模式">
+        <span>&#x25CB;</span><span>环境感知</span>
+      </button>
+      <button class="s-action" id="settingsToggle" title="设置">
+        <span>&#x2699;</span><span>设置</span>
+      </button>
+    </div>
+    <div class="sidebar-status">
+      <span class="s-dot" id="sDot"></span>
+      <span class="s-text" id="sText">就绪</span>
+      <span class="s-cost" id="sCost"></span>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN PANEL ===== -->
+  <main class="main-panel">
+
+    <!-- Camera Section -->
+    <section class="camera-section" id="cameraSection">
+      <div class="camera-viewport" id="cameraViewport">
+        <video id="cameraFeed" autoplay playsinline muted></video>
+        <canvas id="cameraCanvas" style="display:none"></canvas>
+
+        <!-- Scene IQ Overlay -->
+        <div class="scene-iq" id="sceneIQ" style="display:none">
+          <div class="iq-tag iq-live">LIVE</div>
+          <div class="iq-tag iq-brightness" id="iqBrightness">
+            <span class="iq-icon">&#x2600;</span>
+            <span class="iq-meter"><span class="iq-fill" id="iqBrightnessFill"></span></span>
+          </div>
+          <div class="iq-tag iq-motion" id="iqMotion" style="display:none">
+            <span class="iq-dot"></span> 运动中
+          </div>
+          <div class="iq-tag iq-scene" id="iqScene">&#x25CB; 场景</div>
+          <div class="iq-corner iq-fps" id="iqFps">-- fps</div>
+          <div class="iq-corner iq-res" id="iqRes">--</div>
+        </div>
+
+        <!-- Placeholder -->
+        <div class="cam-placeholder" id="camPlaceholder">
+          <div class="cam-placeholder-icon">
+            <svg viewBox="0 0 80 80" width="80" height="80"><circle cx="40" cy="40" r="38" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".2"/><circle cx="40" cy="40" r="28" fill="none" stroke="currentColor" stroke-width="1" opacity=".15"/><path d="M30 45 L40 35 L50 45" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+          </div>
+          <p class="cam-placeholder-text">点击下方按钮打开摄像头</p>
         </div>
       </div>
-    </div>
 
-    <div class="chat-input-area">
-      <div class="voice-indicator" id="voiceIndicator" style="display:none;">
-        <span class="voice-wave"></span>
-        <span>正在聆听...</span>
-      </div>
-      <div class="input-row">
-        <textarea id="chatInput" rows="1" placeholder="输入消息或点击麦克风语音输入..." disabled></textarea>
-        <button class="send-btn" id="sendBtn" disabled>
-          <span>&#x27A4;</span>
+      <div class="camera-toolbar">
+        <button class="tool-btn" id="toggleCamera">
+          <span class="tool-icon">&#x25B3;</span>
+          <span class="tool-label">摄像头</span>
         </button>
+        <button class="tool-btn" id="captureBtn" disabled>
+          <span class="tool-icon">&#x25C9;</span>
+          <span class="tool-label">快照</span>
+        </button>
+        <button class="tool-btn" id="toggleMic" disabled>
+          <span class="tool-icon">&#x25CB;</span>
+          <span class="tool-label">麦克风</span>
+        </button>
+        <button class="tool-btn" id="toggleAmbient" disabled title="环境感知模式">
+          <span class="tool-icon">&#x221E;</span>
+          <span class="tool-label">环境感知</span>
+        </button>
+        <span class="tool-frame-badge" id="frameBadge" style="display:none">
+          <span id="frameSizeText">0</span> KB
+        </span>
       </div>
-    </div>
-  </section>
-</main>
+    </section>
 
-<!-- ========== Settings Modal ========== -->
-<div class="modal-overlay" id="settingsModal" style="display:none;">
-  <div class="modal-content">
+    <!-- Chat Section -->
+    <section class="chat-section">
+      <div class="chat-header">
+        <h2 class="chat-title">对话</h2>
+        <div class="chat-actions">
+          <span class="chip" id="autoSendChip">自动发送</span>
+          <span class="chip" id="ttsChip">语音播报</span>
+          <button class="icon-tool" id="clearChat" title="清空对话">&#x2715;</button>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg msg-system">
+          <div class="msg-body">
+            <p>你好，我是 VCA — 你的视觉对话助手。</p>
+            <p>打开摄像头，然后问我任何关于眼前画面的事。</p>
+            <p class="msg-hint">试试说"帮我看看周围有什么"</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="voice-indicator" id="voiceIndicator">
+        <div class="voice-bar" id="voiceBar"><span></span><span></span><span></span><span></span><span></span></div>
+        <span>正在聆听</span>
+        <span class="voice-interim" id="voiceInterim"></span>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="input-wrapper">
+          <textarea id="chatInput" rows="1" placeholder="输入或按住语音..." disabled></textarea>
+          <button class="input-send" id="sendBtn" disabled>&#x2191;</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== SETTINGS MODAL ===== -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-panel">
     <div class="modal-header">
-      <h2>高级设置</h2>
-      <button class="modal-close" id="settingsClose">&times;</button>
+      <h3>设置</h3>
+      <button class="modal-x" id="settingsClose">&#x2715;</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label for="apiProvider">AI 服务商</label>
+      <div class="fg">
+        <label>AI 服务</label>
         <select id="apiProvider">
-          <option value="mock">离线模拟模式（无需 API Key）</option>
-          <option value="openai">OpenAI (GPT-4o)</option>
+          <option value="mock">离线模拟（免费）</option>
+          <option value="openai">OpenAI</option>
           <option value="gemini">Google Gemini</option>
         </select>
       </div>
-      <div class="form-group" id="apiKeyGroup">
-        <label for="apiKey">API Key</label>
+      <div class="fg" id="apiKeyGroup">
+        <label>API Key</label>
         <input type="password" id="apiKey" placeholder="sk-... 或 AIza...">
-        <p class="form-hint">密钥仅保存在浏览器本地存储中。</p>
+        <p class="fg-hint">密钥仅保存在本地浏览器</p>
       </div>
-      <div class="form-group">
-        <label for="frameInterval">帧采样间隔</label>
-        <select id="frameInterval">
-          <option value="1">每帧发送（实时对话）</option>
-          <option value="3" selected>每 3 帧发送（推荐平衡）</option>
-          <option value="5">每 5 帧发送（更省成本）</option>
-          <option value="10">每 10 帧发送（最省成本）</option>
-        </select>
-        <p class="form-hint">降低发送频率可显著减少 API 调用费用。</p>
+      <div class="fg">
+        <label>帧采样（每 N 帧发送）</label>
+        <div class="btn-group" id="frameIntervalGroup">
+          <button data-v="1">1</button>
+          <button data-v="3" class="active">3</button>
+          <button data-v="5">5</button>
+          <button data-v="10">10</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="imageQuality">图片压缩质量</label>
-        <select id="imageQuality">
-          <option value="0.3">30%（最省流量）</option>
-          <option value="0.5">50%（推荐平衡）</option>
-          <option value="0.7">70%（高质量）</option>
-          <option value="0.9">90%（最高质量）</option>
-        </select>
-        <p class="form-hint">降低质量可减少传输数据量，节省带宽和 API 费用。</p>
+      <div class="fg">
+        <label>图片质量</label>
+        <div class="btn-group" id="qualityGroup">
+          <button data-v="0.3">30%</button>
+          <button data-v="0.5" class="active">50%</button>
+          <button data-v="0.7">70%</button>
+          <button data-v="0.9">高清</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="maxImageWidth">图片最大宽度</label>
-        <select id="maxImageWidth">
-          <option value="320">320px（最省）</option>
-          <option value="640" selected>640px（推荐）</option>
-          <option value="1280">1280px（高清）</option>
-        </select>
+      <div class="fg">
+        <label>图片尺寸</label>
+        <div class="btn-group" id="sizeGroup">
+          <button data-v="320">小</button>
+          <button data-v="640" class="active">中</button>
+          <button data-v="1280">大</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="systemPrompt">系统提示词（自定义行为）</label>
-        <textarea id="systemPrompt" rows="3" placeholder="留空则使用场景默认提示词"></textarea>
+      <div class="fg">
+        <label>系统提示词（覆盖默认）</label>
+        <textarea id="systemPrompt" rows="2" placeholder="留空则使用场景默认提示词"></textarea>
       </div>
-      <button class="btn-primary" id="saveSettings">保存设置</button>
+      <div class="fg">
+        <label>对话</label>
+        <button class="btn-danger" id="clearMemoryBtn">清空视觉记忆</button>
+      </div>
     </div>
   </div>
 </div>
