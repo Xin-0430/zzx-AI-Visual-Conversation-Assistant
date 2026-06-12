@@ -1,55 +1,75 @@
-/**
- * Speech Module
+﻿/**
+ * Speech Module v2 — with voice command detection
  * Handles speech recognition (Web Speech API) and text-to-speech.
- * Provides event-driven voice input and output.
+ * Detects built-in voice commands: save, repeat, switch mode, capture.
  */
 class SpeechManager {
   constructor() {
     this.recognition = null;
     this.synth = window.speechSynthesis;
     this.isListening = false;
+    this.lang = "zh-CN";
     this._onResult = null;
     this._onInterim = null;
     this._onEnd = null;
     this._onError = null;
-    this.lang = 'zh-CN';
-    this.continuous = false; // single utterance mode for push-to-talk
-    this._restartTimeout = null;
+    this._onCommand = null;
+
+    // Voice commands registry
+    this.commands = {
+      "baocun": "save",
+      "cun": "save",
+      "baocun zhe zhang": "save",
+      "save": "save",
+      "chongfu": "repeat",
+      "chongfu yibian": "repeat",
+      "zaishuo yici": "repeat",
+      "repeat": "repeat",
+      "paishe": "capture",
+      "paizhao": "capture",
+      "capture": "capture",
+      "qiehuan": "mode_next",
+      "huan moshi": "mode_next",
+      "qiehuan moshi": "mode_next",
+      "xiayige moshi": "mode_next",
+      "switch": "mode_next",
+      "antai moshi": "ambient",
+      "huanjing ganshi": "ambient",
+      "ambient": "ambient",
+      "qingkong": "clear",
+      "qingkong duihua": "clear",
+      "qingli": "clear",
+      "clear": "clear"
+    };
   }
 
-  /**
-   * Start speech recognition.
-   * @param {Object} options
-   * @param {string} options.lang - Language code (default zh-CN)
-   * @param {boolean} options.continuous - Keep listening after result
-   * @returns {boolean} success
-   */
-  startListening({ lang = 'zh-CN', continuous = false } = {}) {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.warn('Speech recognition not supported in this browser.');
-      return false;
-    }
+  startListening({ lang = "zh-CN", continuous = false } = {}) {
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) return false;
     if (this.isListening) return true;
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    this.recognition = new SpeechRecognition();
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.recognition = new SR();
     this.recognition.lang = lang;
     this.recognition.continuous = continuous;
     this.recognition.interimResults = !continuous;
-    this.recognition.maxAlternatives = 1;
+    this.recognition.maxAlternatives = 3;
 
     this.recognition.onresult = (event) => {
-      let interim = '';
-      let final = '';
+      let interim = "", final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          final += transcript;
-        } else {
-          interim += transcript;
-        }
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) final += t;
+        else interim += t;
       }
-      if (final && this._onResult) this._onResult(final);
+
+      // Check for commands in final result
+      if (final) {
+        const cmd = this._matchCommand(final);
+        if (cmd && this._onCommand) {
+          this._onCommand(cmd, final);
+          return;
+        }
+        if (this._onResult) this._onResult(final);
+      }
       if (interim && this._onInterim) this._onInterim(interim);
     };
 
@@ -58,89 +78,67 @@ class SpeechManager {
       if (this._onEnd) this._onEnd();
     };
 
-    this.recognition.onerror = (event) => {
-      console.warn('Speech recognition error:', event.error);
-      if (event.error === 'no-speech' || event.error === 'aborted') {
-        // Silently handle these
-        return;
-      }
-      if (this._onError) this._onError(event.error);
+    this.recognition.onerror = (e) => {
+      console.warn("Speech error:", e.error);
+      if (e.error === "no-speech" || e.error === "aborted") return;
+      if (this._onError) this._onError(e.error);
     };
 
-    try {
-      this.recognition.start();
-      this.isListening = true;
-      return true;
-    } catch (err) {
-      console.error('Failed to start recognition:', err);
-      return false;
-    }
+    try { this.recognition.start(); this.isListening = true; return true; }
+    catch (err) { console.error("Speech start fail:", err); return false; }
   }
 
   stopListening() {
     if (this.recognition && this.isListening) {
-      try {
-        this.recognition.stop();
-      } catch (e) { /* ignore */ }
+      try { this.recognition.stop(); } catch (e) {}
     }
     this.isListening = false;
-    if (this._restartTimeout) {
-      clearTimeout(this._restartTimeout);
-      this._restartTimeout = null;
-    }
   }
 
-  /**
-   * Speak text using speech synthesis.
-   * @param {string} text - Text to speak
-   * @param {Object} options
-   * @param {number} options.rate - Speech rate 0.1-10 (default 1.0)
-   * @param {number} options.pitch - Speech pitch 0-2 (default 1.0)
-   * @param {Function} options.onEnd - Callback when speech ends
-   */
+  _matchCommand(text) {
+    const normalized = text.toLowerCase().replace(/[.,!?\s]/g, "");
+    for (const [pattern, cmd] of Object.entries(this.commands)) {
+      if (normalized.includes(pattern)) return cmd;
+    }
+    return null;
+  }
+
   speak(text, { rate = 1.0, pitch = 1.0, onEnd = null } = {}) {
-    if (!this.synth || !('speak' in this.synth)) return false;
-    window.speechSynthesis.cancel(); // cancel previous
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-CN';
-    utterance.rate = rate;
-    utterance.pitch = pitch;
-    if (onEnd) utterance.onend = onEnd;
-    // Get a Chinese voice if available
+    if (!this.synth || !("speak" in this.synth)) return false;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN";
+    u.rate = rate;
+    u.pitch = pitch;
+    if (onEnd) u.onend = onEnd;
     const voices = this.synth.getVoices();
-    const zhVoice = voices.find(v => v.lang.startsWith('zh'));
-    if (zhVoice) utterance.voice = zhVoice;
-    this.synth.speak(utterance);
+    const zhVoice = voices.find(v => v.lang.startsWith("zh"));
+    if (zhVoice) u.voice = zhVoice;
+    this.synth.speak(u);
     return true;
   }
 
-  stopSpeaking() {
-    if (this.synth) window.speechSynthesis.cancel();
-  }
+  stopSpeaking() { if (this.synth) window.speechSynthesis.cancel(); }
 
-  isSupported() {
-    return ('webkitSpeechRecognition' in window) || ('SpeechRecognition' in window);
-  }
+  isSupported() { return "webkitSpeechRecognition" in window || "SpeechRecognition" in window; }
+  isTTSupported() { return "speechSynthesis" in window; }
 
-  isTTSupported() {
-    return 'speechSynthesis' in window;
-  }
-
-  on(event, callback) {
+  on(event, cb) {
     switch (event) {
-      case 'result': this._onResult = callback; break;
-      case 'interim': this._onInterim = callback; break;
-      case 'end': this._onEnd = callback; break;
-      case 'error': this._onError = callback; break;
+      case "result": this._onResult = cb; break;
+      case "interim": this._onInterim = cb; break;
+      case "end": this._onEnd = cb; break;
+      case "error": this._onError = cb; break;
+      case "command": this._onCommand = cb; break;
     }
   }
-
   off(event) {
     switch (event) {
-      case 'result': this._onResult = null; break;
-      case 'interim': this._onInterim = null; break;
-      case 'end': this._onEnd = null; break;
-      case 'error': this._onError = null; break;
+      case "result": this._onResult = null; break;
+      case "interim": this._onInterim = null; break;
+      case "end": this._onEnd = null; break;
+      case "error": this._onError = null; break;
+      case "command": this._onCommand = null; break;
     }
   }
 }
