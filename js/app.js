@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 
 (function(){
   // ---- State ----
@@ -433,6 +433,7 @@
     if (text && !overrideText) addUserMessage(text, frame);
     chatInput.value = ""; autoResize();
     const thinkEl = addThinking();
+    var iq = camera?.getSceneIQ?.();
     await processQuery(text || "\u63CF\u8FF0\u4F60\u770B\u5230\u7684\u753B\u9762", frame, thinkEl);
   }
 
@@ -450,7 +451,7 @@
   }
 
   // ---- Process Query ----
-  async function processQuery(text, frame, thinkEl) {
+  async function processQuery(text, frame, thinkEl, sceneIQ) {
     if (isProcessing) return;
     isProcessing = true;
     try {
