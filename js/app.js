@@ -122,6 +122,7 @@
     ttsChip.addEventListener("click", () => {
       ttsEnabled = !ttsEnabled;
       ttsChip.classList.toggle("active");
+      if (!ttsEnabled && speech) speech.stopSpeaking();
     });
 
     // Settings
@@ -347,7 +348,7 @@
       isMicActive = false;
     } else {
       const m = SCENE_MODES[currentMode];
-      if (speech.startListening({ lang: m.speechLang || "zh-CN", continuous: false })) {
+      if (speech.startListening({ lang: m.speechLang || "zh-CN", continuous: true })) {
         isMicActive = true;
         toggleMicBtn.classList.add("recording");
         toggleMicBtn.innerHTML = '<span class="tool-icon">\u25CB</span><span class="tool-label">\u505C\u6B62</span>';
