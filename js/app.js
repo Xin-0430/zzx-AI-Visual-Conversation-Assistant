@@ -89,6 +89,7 @@
     renderSuggestions("general");
     updateStatus("ready", "就绪 \u{1F916}");
   }
+  updateStatPanel();
 
   // ---- Events ----
   function bindEvents() {
@@ -169,15 +170,9 @@
     speech.on("command", (cmd, raw) => {
       handleVoiceCommand(cmd, raw);
     });
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
-  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendMessage(); }
     if (e.key === 'Escape') {
-<<<<<<< Updated upstream
       var m = document.getElementById('settingsModal');
       if (m.style.display === 'flex') document.getElementById('settingsClose').click();
     }
@@ -185,27 +180,6 @@
       var chips = document.querySelectorAll('.mode-chip');
       var idx = ['1','2','3','4','5'].indexOf(e.key);
       if (idx < chips.length) chips[idx].click();
-=======
-      if (document.getElementById('settingsModal').style.display === 'flex') {
-        document.getElementById('settingsClose').click();
-      }
-    }
-  });
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    // Ctrl/Cmd + Enter: send message
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendMessage(); }
-    // Escape: close settings or stop mic
-    if (e.key === 'Escape') {
-      var m = document.getElementById('settingsModal');
-      if (m.style.display === 'flex') { document.getElementById('settingsClose').click(); }
-    }
-    // 1-5: switch scene modes
-    if (['1','2','3','4','5'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
-      var modes = Object.keys(SCENE_MODES);
-      var idx = ['1','2','3','4','5'].indexOf(e.key);
-      if (idx < modes.length) document.querySelectorAll('.mode-chip')[idx].click();
->>>>>>> Stashed changes
     }
   });
   }
@@ -485,6 +459,7 @@
       }
       updateStatus("online", getStatusLabel());
     } catch (err) {
+  updateStatPanel();
       if (thinkEl && thinkEl.parentNode) thinkEl.parentNode.removeChild(thinkEl);
       addErrorMessage("\u62B1\u6B49\uFF0C\u5904\u7406\u5931\u8D25: " + err.message);
       updateStatus("error", "\u8BF7\u6C42\u5931\u8D25");
@@ -564,6 +539,8 @@
         speech.speak("\u6B63\u5728\u67E5\u770B\u4E4B\u524D\u4FDD\u5B58\u7684\u753B\u9762", { rate: 0.9 });
         const q = entry.query || "\u63CF\u8FF0\u8FD9\u5F20\u56FE\u7247";
         setTimeout(() => captureAndSend(q), 300);
+      });
+      memoryStrip.appendChild(cell);
       cell.querySelector('.mc-dl').addEventListener('click', (e) => {
         e.stopPropagation();
         const a = document.createElement('a');
@@ -571,8 +548,6 @@
         a.download = 'vca-memory-' + entry.time + '.jpg';
         a.click();
       });
-      });
-      memoryStrip.appendChild(cell);
     });
   }
 
@@ -626,6 +601,14 @@
   }
 
   // ---- Utility ----
+function updateStatPanel() {
+  var cs = ai.getCostSummary(), el;
+  el = document.getElementById('statRequests'); if(el) el.textContent = cs.requests;
+  el = document.getElementById('statTokens'); if(el) el.textContent = (cs.promptTokens+cs.completionTokens).toLocaleString();
+  el = document.getElementById('statCost'); if(el) el.textContent = '\$'+cs.costUSD.toFixed(4);
+  el = document.getElementById('statImages'); if(el) el.textContent = cs.imagesProcessed;
+}
+
   function esc(s) {
     const d = document.createElement("div");
     d.textContent = s;
@@ -671,9 +654,4 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
-
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>AI VCA — 视觉对话助手</title>
 <link rel="stylesheet" href="css/style.css">
-</head>
+<style>.voice-indicator{display:none!important}.scene-iq{pointer-events:none!important}</style></head>
 <body>
 
 <div id="app">
@@ -63,7 +63,9 @@
       <div class="memory-strip" id="memoryStrip">
         <div class="memory-empty">暂无记录</div>
       </div>
-    </div>
+    <div class="stat-section" id="statSection"><div class="memory-header"><span class="memory-label">使用统计</span></div><div class="stat-grid"><div class="stat-item"><span class="stat-value" id="statRequests">0</span><span class="stat-label">请求</span></div><div class="stat-item"><span class="stat-value" id="statTokens">0</span><span class="stat-label">Tokens</span></div><div class="stat-item"><span class="stat-value" id="statCost"></div>
+
+    <!-- Sidebar Footer --></span><span class="stat-label">费用</span></div><div class="stat-item"><span class="stat-value" id="statImages">0</span><span class="stat-label">图像</span></div></div></div></div>
 
     <!-- Sidebar Footer -->
     <div class="sidebar-actions">
@@ -240,4 +242,6 @@
 <script src="js/app.js"></script>
 </body>
 </html>
+
+
 
