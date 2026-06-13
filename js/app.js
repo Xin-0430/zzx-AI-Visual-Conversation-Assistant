@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 (function(){
   // ---- State ----
@@ -30,7 +30,6 @@
 
   // Toolbar
   const toggleCameraBtn = $("toggleCamera");
-  const captureBtn = $("captureBtn");
   const toggleMicBtn = $("toggleMic");
   const toggleAmbientBtn = $("toggleAmbient");
   const frameBadge = $("frameBadge");
@@ -99,7 +98,6 @@
 
     // Camera
     toggleCameraBtn.addEventListener("click", toggleCamera);
-    captureBtn.addEventListener("click", captureAndSend);
     toggleMicBtn.addEventListener("click", toggleMic);
 
     // Ambient
@@ -266,7 +264,7 @@
       toggleCameraBtn.innerHTML = '<span class="tool-icon">\u25B3</span><span class="tool-label">\u6444\u50CF\u5934</span>';
       camPlaceholder.style.display = "flex";
       sceneIQ.style.display = "none";
-      captureBtn.disabled = true;
+
       toggleMicBtn.disabled = true;
       toggleAmbientBtn.disabled = true;
       chatInput.disabled = true;
@@ -284,7 +282,7 @@
         toggleCameraBtn.innerHTML = '<span class="tool-icon">\u25B3</span><span class="tool-label">\u5173\u95ED</span>';
         camPlaceholder.style.display = "none";
         sceneIQ.style.display = "flex";
-        captureBtn.disabled = false;
+
         toggleMicBtn.disabled = false;
         toggleAmbientBtn.disabled = false;
         chatInput.disabled = false;
