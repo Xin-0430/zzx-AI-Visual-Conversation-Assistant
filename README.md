@@ -4,7 +4,7 @@
 
 ---
 
-**在线体验：** [https://xxxx.github.io/zzx-AI-Visual-Conversation-Assistant](https://xxxx.github.io/zzx-AI-Visual-Conversation-Assistant)
+**在线体验：** [https://musical-treacle-df40ef.netlify.app/)
 
 **Demo 视频：** [https://www.bilibili.com/video/BVxxxxxxxx](https://www.bilibili.com/video/BVxxxxxxxx)
 
