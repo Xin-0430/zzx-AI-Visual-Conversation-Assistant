@@ -6,7 +6,7 @@
 
 **在线体验：** [https://musical-treacle-df40ef.netlify.app/)
 
-**Demo 视频：** [https://www.bilibili.com/video/BVxxxxxxxx](https://www.bilibili.com/video/BVxxxxxxxx)
+**Demo 视频：** [https://www.bilibili.com/video/BV1p4Jp6XEgd/?spm_id_from=333.1387.homepage.video_card.click)
 
 ---
 
